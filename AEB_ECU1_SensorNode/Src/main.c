@@ -7,7 +7,7 @@
 #include "adc.h"
 
 bool btn_state;
-uint32_t sensor_value;
+//uint32_t sensor_value;
 int main()
 {
 	//enable fpu
@@ -39,7 +39,8 @@ int main()
 		//pornim led ul
 		//led_on();
 		//verificam starea butonului
-		if(get_btn_state() == true) {
+		btn_state = get_btn_state();
+		if(btn_state == true) {
 			//daca butonul este apasat, pornim buzzerul
 			buzzer_on();
 		} else {
