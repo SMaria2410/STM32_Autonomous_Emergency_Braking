@@ -38,7 +38,7 @@ void can_params_init(uint8_t mode) {
 	//dam exit din sleep mode
 	CAN1->MCR &=~ (1U<<1);
 	//asteptam pana cand CAN1 da exit din sleep mode
-	while((CAN1->MSR & (1U<<1)) != 0) ; //polling cu busy waiting
+	while((CAN1->MSR & (1U<<1)) != 0U) ; //polling cu busy waiting
 	//configuram parametri de timp inclusiv baudrate ul,
 	//configurand time segment 1 si 2 si prescaler ul
 	CAN1->BTR = (1<<CAN_BTR_TS1_Pos) | (0<<CAN_BTR_TS2_Pos) | (9<<CAN_BTR_BRP_Pos);
@@ -56,9 +56,46 @@ void can_start(void) {
 	//dam exit din initialization mode
 	CAN1->MCR &=~ (1U<<0);
 	//asteptam pana cand CAN1 da exit din initialization mode
-	while((CAN1->MSR & (1U<<0)) != 0) ; //polling cu busy waiting
+	while((CAN1->MSR & (1U<<0)) != 0U) ; //polling cu busy waiting
 	//dam enable interrupt pt FIFO0 message pending
 	CAN1->IER |= (1U<<1);
 }
+
+uint8_t can_add_tx_message(can_tx_header_typedef *pHeader, uint32_t *pTxMailbox, uint8_t aData[]) {
+	//verificam daca avem macar un mailbox de transmit empty
+	if(((CAN1->TSR & (1U<<26)) != 0U) || ((CAN1->TSR & (1U<<27)) != 0U) || ((CAN1->TSR & (1U<<28)) != 0U)) {
+		//alegem mailbox ul liber din flag ul CODE al TSR
+		uint32_t transmitmailbox = (CAN1->TSR & ((1U<<24) | (1U<<25))) >> 24;
+		//verificam sa fie un mailbox valid(0, 1 sau 2)
+		if(transmitmailbox > 2U) {
+			return 1;
+		}
+		//retinem adresa mailbox ului
+		*pTxMailbox = transmitmailbox;
+		//daca IDE = 0, setam std_id
+		if(pHeader->ide == 0U) {
+			CAN1->sTxMailBox[transmitmailbox].TIR = (pHeader->std_id << 21) | (pHeader->rtr << 1);
+		} else {
+			//daca IDE = 1, setam ext_id
+			CAN1->sTxMailBox[transmitmailbox].TIR = (pHeader->ext_id << 3) | (1U<<2) | (pHeader->rtr << 1);
+		}
+		//setam dlc ul
+		CAN1->sTxMailBox[transmitmailbox].TDTR = (pHeader->dlc);
+		//activam/dezactivam transmit global time ul
+		if(pHeader->transmit_global_time == 1U) {
+			CAN1->sTxMailBox[transmitmailbox].TDTR |= (1U<<8);
+		}
+		//setam datele
+		//pt low
+		CAN1->sTxMailBox[transmitmailbox].TDLR = ((uint32_t)aData[0]) | ((uint32_t)aData[1] << 8) | ((uint32_t)aData[2] << 16) |  ((uint32_t)aData[3] <<24);
+		//pt high
+		CAN1->sTxMailBox[transmitmailbox].TDHR = ((uint32_t)aData[4]) | ((uint32_t)aData[5] << 8) | ((uint32_t)aData[6] <<16) | ((uint32_t)aData[7] << 24);
+		//setam bitul TXRQ (bitul 0 din TIR) pentru a incepe transmisia
+		CAN1->sTxMailBox[transmitmailbox].TIR |= (1U<<0);
+		return 0;
+	}
+	return 1;
+}
+
 
 
