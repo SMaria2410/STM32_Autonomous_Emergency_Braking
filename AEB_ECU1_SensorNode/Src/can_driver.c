@@ -1,5 +1,6 @@
 #include "can_driver.h"
 
+
 void can_gpio_init(void) {
 	//enable clock access la GPIOB
 	RCC->AHB1ENR |= (1U<<1);
@@ -95,6 +96,53 @@ uint8_t can_add_tx_message(can_tx_header_typedef *pHeader, uint32_t *pTxMailbox,
 		return 0;
 	}
 	return 1;
+}
+
+uint8_t can_get_rx_message(can_rx_header_typedef *pHeader, uint32_t RxFifo, uint8_t aData[]) {
+	//verificam ce fifo folosim in filtre (FIFO0 sau FIFO1)
+	if(RxFifo == 0U) { //verificam daca e FIFO0
+		//verificam daca FIFO0 e empty
+		if((CAN1->RF0R & ((1U<<0) | (1U<<1))) == 0U) {
+			return 1;
+		}
+	} else { //daca e FIFO1
+		//verificam daca FIFO1 e empty
+		if((CAN1->RF1R & ((1U<<0) | (1U<<1))) == 0U) {
+			return 1;
+		}
+	}
+	//populam campurile headerului cu ce avem in registre
+	//pt id
+	pHeader->ide = (CAN1->sFIFOMailBox[RxFifo].RIR & (1U<<2)) >> 2;
+	//verificam daca e std_id
+	if(pHeader->ide == 0U) {
+		pHeader->std_id = (CAN1->sFIFOMailBox[RxFifo].RIR >> 21) & 0x7FF;
+	} else { //daca e ext_id
+		pHeader->ext_id = (CAN1->sFIFOMailBox[RxFifo].RIR >> 3) & 0x1FFFFFFF;
+	}
+	pHeader->rtr = (CAN1->sFIFOMailBox[RxFifo].RIR & (1U<<1)) >> 1;
+	pHeader->dlc = (CAN1->sFIFOMailBox[RxFifo].RDTR & 0xF);
+	pHeader->filter_match_index = (CAN1->sFIFOMailBox[RxFifo].RDTR >> 8) & 0xFF;
+	pHeader->timestamp = (CAN1->sFIFOMailBox[RxFifo].RDTR >> 16) & 0xFFFF;
+	//extragem datele din low
+	aData[0] = (uint8_t)(CAN1->sFIFOMailBox[RxFifo].RDLR & 0xFF);
+	aData[1] = (uint8_t)((CAN1->sFIFOMailBox[RxFifo].RDLR >> 8) & 0xFF);
+	aData[2] = (uint8_t)((CAN1->sFIFOMailBox[RxFifo].RDLR >> 16) & 0xFF);
+	aData[3] = (uint8_t)((CAN1->sFIFOMailBox[RxFifo].RDLR >> 24) & 0xFF);
+	//extragem datele din high
+	aData[4] = (uint8_t)(CAN1->sFIFOMailBox[RxFifo].RDHR & 0xFF);
+	aData[5] = (uint8_t)((CAN1->sFIFOMailBox[RxFifo].RDHR >> 8) & 0xFF);
+	aData[6] = (uint8_t)((CAN1->sFIFOMailBox[RxFifo].RDHR >> 16) & 0xFF);
+	aData[7] = (uint8_t)((CAN1->sFIFOMailBox[RxFifo].RDHR >> 24) & 0xFF);
+	//dam release la FIFO
+	//verificam daca e FIFO0
+	if(RxFifo == 0U) {
+		//dam release
+		CAN1->RF0R |= (1U<<5);
+	} else { //daca e FIFO1
+		CAN1->RF1R |= (1U<<5);
+	}
+	return 0;
 }
 
 

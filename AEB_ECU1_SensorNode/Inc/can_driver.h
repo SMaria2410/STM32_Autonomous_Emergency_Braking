@@ -2,6 +2,7 @@
 #define CAN_DRIVER_H_
 
 #include "stm32f4xx.h"
+#include "stm32f446xx.h"
 
 void can_gpio_init(void);
 void can_params_init(uint8_t mode);
@@ -40,5 +41,6 @@ typedef struct {
 }can_rx_header_typedef;
 
 uint8_t can_add_tx_message(can_tx_header_typedef *pHeader, uint32_t *pTxMailbox, uint8_t aData[]);
+uint8_t can_get_rx_message(can_rx_header_typedef *pHeader, uint32_t RxFifo, uint8_t aData[]);
 
 #endif
