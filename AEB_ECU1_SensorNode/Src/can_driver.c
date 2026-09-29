@@ -145,5 +145,33 @@ uint8_t can_get_rx_message(can_rx_header_typedef *pHeader, uint32_t RxFifo, uint
 	return 0;
 }
 
+void can_filter_config(uint32_t std_id,  uint8_t slave_start_bank, uint8_t filter_nr, uint8_t fifo_assign) {
+	//setam initialization mode
+	CAN1->FMR |= (1U<<0);
+	//setam filtrul slave sa inceapa de la 20 -> !!!SET AND CLEAR
+	CAN1->FMR &=~ (0x3F << 8);
+	CAN1->FMR |= (slave_start_bank << 8);
+	//dezactivam filtrul 18
+	CAN1->FA1R &=~ (1U<<filter_nr);
+	//setam configuratia scale pe 32 de biti
+	CAN1->FS1R |= (1U<<filter_nr);
+	//configuram modul filtrelor la mask mode
+	CAN1->FM1R &=~ (1U<<filter_nr);
+	//setam id ul
+	CAN1->sFilterRegister[filter_nr].FR1 = (std_id << 21);
+	//setam masca, la fel ca id ul ca sa l accepte id ul de mai sus
+	CAN1->sFilterRegister[filter_nr].FR2 = (std_id << 21);
+	//assignam filtrul 18 FIFO ului 0
+	if(fifo_assign == 0) {
+		CAN1->FFA1R &=~ (1U<<filter_nr);
+	} else {
+		CAN1->FFA1R |= (1U<<filter_nr);
+	}
+	//activam filtrul 18
+	CAN1->FA1R |= (1U<<filter_nr);
+	//iesim din initialization mode
+	CAN1->FMR &=~ (1U<<0);
+}
+
 
 

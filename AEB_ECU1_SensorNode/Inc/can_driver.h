@@ -42,5 +42,6 @@ typedef struct {
 
 uint8_t can_add_tx_message(can_tx_header_typedef *pHeader, uint32_t *pTxMailbox, uint8_t aData[]);
 uint8_t can_get_rx_message(can_rx_header_typedef *pHeader, uint32_t RxFifo, uint8_t aData[]);
+void can_filter_config(uint32_t std_id,  uint8_t slave_start_bank, uint8_t filter_nr, uint8_t fifo_assign);
 
 #endif
