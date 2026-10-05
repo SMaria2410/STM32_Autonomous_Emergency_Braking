@@ -27,6 +27,10 @@ void can_gpio_init(void) {
 	GPIOB->AFR[1] |= (0x09<<4); */
 	//enable CAN RX0 interrupt (pt receive de mesaje)
 	NVIC_EnableIRQ(CAN1_RX0_IRQn);
+
+	//activam pull up pe PB8 (biti 17 si 16 -> 0 si 1) si PB9 (biti 19 si 18 -> 0 si 1)
+	GPIOB->PUPDR &=~ ((3U << 16) | (3U << 18)); //clear
+	GPIOB->PUPDR |=  ((1U << 16) | (1U << 18)); //set
 }
 
 void can_params_init(uint8_t mode) {
@@ -160,7 +164,7 @@ void can_filter_config(uint32_t std_id,  uint8_t slave_start_bank, uint8_t filte
 	//setam id ul
 	CAN1->sFilterRegister[filter_nr].FR1 = (std_id << 21);
 	//setam masca, la fel ca id ul ca sa l accepte id ul de mai sus
-	CAN1->sFilterRegister[filter_nr].FR2 = (std_id << 21);
+	CAN1->sFilterRegister[filter_nr].FR2 = (0x7FF << 21);
 	//assignam filtrul 18 FIFO ului 0
 	if(fifo_assign == 0) {
 		CAN1->FFA1R &=~ (1U<<filter_nr);
