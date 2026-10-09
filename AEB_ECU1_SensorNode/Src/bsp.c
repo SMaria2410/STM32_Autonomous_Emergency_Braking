@@ -1,7 +1,7 @@
 #include "bsp.h"
 #include "stm32f4xx.h"
 
-/*void led_init(void) {
+void led_init(void) {
 	//enable clock pt GPIOA
 	RCC->AHB1ENR |= (1U<<0);
 	//setam PA5 mode = output mode (bit 10 = 1; bit 11 = 0)
@@ -19,7 +19,6 @@ void led_off(void) {
 	GPIOA->ODR &=~ (1U<<5);
 
 }
-*/
 
 void buzzer_init(void) {
 	//enable clock pt GPIOA

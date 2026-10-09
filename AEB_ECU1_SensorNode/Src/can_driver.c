@@ -13,20 +13,14 @@ void can_gpio_init(void) {
 	GPIOB->MODER |= (1U<<19);
 	//setam PB8 si PB9 AF = CAN1 RX si TX
 	//pt PB8: 1001 ca sa fie AF9
-	GPIOB->AFR[1] |= (1U<<0);
-	GPIOB->AFR[1] &=~ (1U<<1);
-	GPIOB->AFR[1] &=~ (1U<<2);
-	GPIOB->AFR[1] |= (1U<<3);
+	GPIOB->AFR[1] &=~ (0xF<<0);
+	GPIOB->AFR[1] |= (1U<<0) | (1U<<3);
 	//pt PB9: 1001 ca sa fie AF9
-	GPIOB->AFR[1] |= (1U<<4);
-	GPIOB->AFR[1] &=~ (1U<<5);
-	GPIOB->AFR[1] &=~ (1U<<6);
-	GPIOB->AFR[1] |= (1U<<7);
+	GPIOB->AFR[1] &=~ (0xF<<4);
+	GPIOB->AFR[1] |= (1U<<4) | (1U<<7);
 	/*sau se poate pune direct valoarea 9 incepand cu bitii 0, respectiv 4
 	GPIOB->AFR[1] |= (0x09<<0);
 	GPIOB->AFR[1] |= (0x09<<4); */
-	//enable CAN RX0 interrupt (pt receive de mesaje)
-	NVIC_EnableIRQ(CAN1_RX0_IRQn);
 
 	//activam pull up pe PB8 (biti 17 si 16 -> 0 si 1) si PB9 (biti 19 si 18 -> 0 si 1)
 	GPIOB->PUPDR &=~ ((3U << 16) | (3U << 18)); //clear
@@ -44,9 +38,10 @@ void can_params_init(uint8_t mode) {
 	CAN1->MCR &=~ (1U<<1);
 	//asteptam pana cand CAN1 da exit din sleep mode
 	while((CAN1->MSR & (1U<<1)) != 0U) ; //polling cu busy waiting
+	CAN1->MCR |= (1U << 4); // NART = 1 (No Automatic Retransmission)
 	//configuram parametri de timp inclusiv baudrate ul,
 	//configurand time segment 1 si 2 si prescaler ul
-	CAN1->BTR = (1<<CAN_BTR_TS1_Pos) | (0<<CAN_BTR_TS2_Pos) | (9<<CAN_BTR_BRP_Pos);
+	CAN1->BTR = (11U << CAN_BTR_TS1_Pos) | (2U << CAN_BTR_TS2_Pos) | (7U << CAN_BTR_BRP_Pos);
 	//selectam mode ul
 	if(mode == 1) {
 		//normal mode (loopback disabled)
@@ -64,6 +59,8 @@ void can_start(void) {
 	while((CAN1->MSR & (1U<<0)) != 0U) ; //polling cu busy waiting
 	//dam enable interrupt pt FIFO0 message pending
 	CAN1->IER |= (1U<<1);
+	//enable CAN RX0 interrupt (pt receive de mesaje)
+	NVIC_EnableIRQ(CAN1_RX0_IRQn);
 }
 
 uint8_t can_add_tx_message(can_tx_header_typedef *pHeader, uint32_t *pTxMailbox, uint8_t aData[]) {
@@ -164,7 +161,7 @@ void can_filter_config(uint32_t std_id,  uint8_t slave_start_bank, uint8_t filte
 	//setam id ul
 	CAN1->sFilterRegister[filter_nr].FR1 = (std_id << 21);
 	//setam masca, la fel ca id ul ca sa l accepte id ul de mai sus
-	CAN1->sFilterRegister[filter_nr].FR2 = (0x7FF << 21);
+	CAN1->sFilterRegister[filter_nr].FR2 = (0x7FFU << 21);
 	//assignam filtrul 18 FIFO ului 0
 	if(fifo_assign == 0) {
 		CAN1->FFA1R &=~ (1U<<filter_nr);
