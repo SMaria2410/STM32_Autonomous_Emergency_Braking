@@ -7,23 +7,6 @@
 #include "adc.h"
 #include "can_driver.h"
 
-//buffer in care retinem datele din receive
-uint8_t rx_data[9];
-//instanta a headerului de receive
-can_rx_header_typedef rx_header;
-//definim fifo0
-#define CAN_RX_FIFO0 0x00
-//contor pt debugging(cate mesaje am primit)
-uint8_t count = 0;
-
-void CAN1_RX0_IRQHandler(void) {
-	//daca avem message pending in FIFO 0
-	if((CAN1->RF0R & (0x03)) != 0) { //citim primii 2 biti din reg si verificam sa nu fie 0
-		can_get_rx_message(&rx_header, CAN_RX_FIFO0, rx_data);
-		count++;
-	}
-}
-
 //buffer in care retinem datele pt transmit
 //uint8_t tx_data[5];
 //instanta a headerului de transmit
@@ -61,7 +44,6 @@ int main()
 	//initializam modulul can
 	can_gpio_init();
 	can_params_init(1); //setam normal mode
-	can_filter_config(0x544, 14, 0, 0);
 	can_start();
 
 	//vrem sa transmitem 8 octeti
@@ -108,7 +90,7 @@ int main()
 		//printf("TSR: 0x%08lX | ESR: 0x%08lX\r\n", CAN1->TSR, CAN1->ESR);
 		//apelam functia de transmit
 		can_add_tx_message(&tx_header, tx_mailbox, &tx_msg_pack[0]);
-		//vrem sa transmitem o data la o secunda
+		//vrem sa transmitem cu delay de o secunda
 		delay(1);
 
 	}

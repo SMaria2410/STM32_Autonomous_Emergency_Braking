@@ -38,7 +38,8 @@ void can_params_init(uint8_t mode) {
 	CAN1->MCR &=~ (1U<<1);
 	//asteptam pana cand CAN1 da exit din sleep mode
 	while((CAN1->MSR & (1U<<1)) != 0U) ; //polling cu busy waiting
-	CAN1->MCR |= (1U << 4); // NART = 1 (No Automatic Retransmission)
+	CAN1->MCR &=~ (1U<<4); // NART = 0 (retransmisie automata pana la ack)
+	CAN1->MCR |= (1U<<6); // ABOM = 1 (iesire automata din bus-off)
 	//configuram parametri de timp inclusiv baudrate ul,
 	//configurand time segment 1 si 2 si prescaler ul
 	CAN1->BTR = (11U << CAN_BTR_TS1_Pos) | (2U << CAN_BTR_TS2_Pos) | (7U << CAN_BTR_BRP_Pos);
@@ -149,10 +150,10 @@ uint8_t can_get_rx_message(can_rx_header_typedef *pHeader, uint32_t RxFifo, uint
 void can_filter_config(uint32_t std_id,  uint8_t slave_start_bank, uint8_t filter_nr, uint8_t fifo_assign) {
 	//setam initialization mode
 	CAN1->FMR |= (1U<<0);
-	//setam filtrul slave sa inceapa de la 20 -> !!!SET AND CLEAR
+	//setam filtrul slave sa inceapa de la slave_start_bank din parametri -> !!!SET AND CLEAR
 	CAN1->FMR &=~ (0x3F << 8);
 	CAN1->FMR |= (slave_start_bank << 8);
-	//dezactivam filtrul 18
+	//dezactivam filtrul
 	CAN1->FA1R &=~ (1U<<filter_nr);
 	//setam configuratia scale pe 32 de biti
 	CAN1->FS1R |= (1U<<filter_nr);
@@ -160,15 +161,15 @@ void can_filter_config(uint32_t std_id,  uint8_t slave_start_bank, uint8_t filte
 	CAN1->FM1R &=~ (1U<<filter_nr);
 	//setam id ul
 	CAN1->sFilterRegister[filter_nr].FR1 = (std_id << 21);
-	//setam masca, la fel ca id ul ca sa l accepte id ul de mai sus
+	//setam masca prin care verificam sa fie exact id ul de mai sus
 	CAN1->sFilterRegister[filter_nr].FR2 = (0x7FFU << 21);
-	//assignam filtrul 18 FIFO ului 0
+	//assignam filtrul FIFO ului 0
 	if(fifo_assign == 0) {
 		CAN1->FFA1R &=~ (1U<<filter_nr);
 	} else {
 		CAN1->FFA1R |= (1U<<filter_nr);
 	}
-	//activam filtrul 18
+	//activam filtrul
 	CAN1->FA1R |= (1U<<filter_nr);
 	//iesim din initialization mode
 	CAN1->FMR &=~ (1U<<0);
