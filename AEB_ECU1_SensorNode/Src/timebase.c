@@ -6,8 +6,8 @@
 #define CTRL_CLCKSRC (1U<<2)
 #define CTRL_COUNTFLAG (1U<<16)
 
-//frecventa sistemului nostru este 16MHz => 16 milioane de cicluri de ceas intr o secunda
-#define ONE_SEC_LOAD 16000000
+//frecventa sistemului nostru este 16MHz => 16 milioane de cicluri de ceas intr o secunda => 16000 de cicluri de ceas intr o milisecunda
+#define ONE_MS_LOAD 16000
 
 //cand avem un interrupt, vrem sa adaugam 1 la nr total de tick uri
 #define TICK_FREQ 1
@@ -17,14 +17,14 @@
 volatile uint32_t g_curr_tick;
 volatile uint32_t g_curr_tick_p;
 
-//systick genereaza un interrupt in fiecare secunda
+//systick genereaza un interrupt in fiecare milisecunda
 void timebase_init(void) {
 	//dam disable la interrupt ul global -> nu vrem sa avem intreruperi in timpul configurarii
 	__disable_irq();
 
-	//decidem unitatea de masura -> vrem secunde
-	//incarcam timerul cu nr de cicluri de clock per secunda
-	SysTick->LOAD = ONE_SEC_LOAD - 1; //pt ca incepem cu 0
+	//decidem unitatea de masura -> vrem milisecunde
+	//incarcam timerul cu nr de cicluri de clock per milisecunda
+	SysTick->LOAD = ONE_MS_LOAD - 1; //pt ca incepem cu 0
 	//dam clear la registru pt valoarea curenta systick
 	SysTick->VAL = 0;
 	//selectam sursa interna de ceas
@@ -56,7 +56,7 @@ uint32_t get_tick(void) {
 	return g_curr_tick_p;
 }
 
-//delay in secunde
+//delay in milisecunde
 void delay(uint32_t delay) {
 	uint32_t tickstart = get_tick();
 	uint32_t wait = delay;

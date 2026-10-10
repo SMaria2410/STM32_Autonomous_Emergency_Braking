@@ -90,8 +90,8 @@ int main()
 		//printf("TSR: 0x%08lX | ESR: 0x%08lX\r\n", CAN1->TSR, CAN1->ESR);
 		//apelam functia de transmit
 		can_add_tx_message(&tx_header, tx_mailbox, &tx_msg_pack[0]);
-		//vrem sa transmitem cu delay de o secunda
-		delay(1);
+		//vrem sa transmitem cu delay de o secunda(1000 de milisecunde)
+		delay(1000);
 
 	}
 }
