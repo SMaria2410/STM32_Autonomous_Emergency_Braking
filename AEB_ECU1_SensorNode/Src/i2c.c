@@ -87,20 +87,51 @@ static void addr_clear(void) {
 }
 
 //functia de write
+uint8_t i2c_write(uint8_t sensor_addr, uint8_t sensor_write_reg, const uint8_t *data, uint8_t n) {
+	//asteptam bus liber
+	//while((I2C1->SR2 & (1U<<1)) != 0) { }
+	if(free_bus_waiting() == 1) {
+		return 1;
+	}
+	//generam START (CR1) si asteptam start bit din SR1
+	I2C1->CR1 |= (1U<<8);
+	if(status_flag_waiting(1U<<0) == 1) {
+		return 1;
+	}
+	//scriem in DR adresa slave ului shiftata cu 1 la stanga (bitul 0 = 0 => write)
+	I2C1->DR = (sensor_addr<<1);
+	//asteptam ADDR, apoi il stergem
+	//while((I2C1->SR1 & (1U<<1)) == 0) { }
+	if(status_flag_waiting(1U<<1) == 1) {
+		return 1;
+	}
+	addr_clear();
+	//asteptam TXE si scriem in DR adresa registrului
+	//while((I2C1->SR1 & (1U<<7)) == 0) { }
+	if(status_flag_waiting(1U<<7) == 1) {
+		return 1;
+	}
+	I2C1->DR = (sensor_write_reg << 0);
+	//pt fiecare octet de date: asteptam TXE, scriem octetul in DR
+	for(int i = 0; i < n; i++) {
+		//while((I2C1->SR1 & (1U<<7)) == 0) {}
+		if(status_flag_waiting(1U<<7) == 1) {
+			return 1;
+		}
+		I2C1->DR = (data[i] << 0);
+	}
+	//asteptam BTF (ultimul octet a iesit complet de pe bus)
+	if(status_flag_waiting(1U<<2) == 1) {
+		return 1;
+	}
+	//generam STOP
+	I2C1->CR1 |= (1U<<9);
+	return 0;
+}
 
-//asteptam bus liber
-//generam START (CR1) si asteptam SB
-//scriem in DR adresa slave ului shiftata cu 1 la stanga (bitul 0 = 0 => write)
-//asteptam ADDR, apoi il stergem
-//asteptam TXE si scriem in DR adresa registrului
-//pt fiecare octet de date: asteptam TXE, scriem octetul in DR
-//asteptam BTF (ultimul octet a iesit complet pe bus)
-//generam STOP
-//return 0
-//(daca orice functie de asteptare da eroare -> return 1)
 
+//functia de read
 
-//=== i2c1_read ===
 //--- partea 1: ii spunem senzorului de la ce registru citim (ca la write) ---
 //asteptam bus liber
 //generam START si asteptam SB
