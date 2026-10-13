@@ -20,13 +20,10 @@ void CAN1_RX0_IRQHandler(void) {
 	//daca avem message pending in FIFO 0
 	if((CAN1->RF0R & (0x03)) != 0) { //citim primii 2 biti din reg si verificam sa nu fie 0
 		can_get_rx_message(&rx_header, CAN_RX_FIFO0, rx_data);
-		//punem terminatorul de sir ca sa stim unde se termina textul
-		if(rx_header.dlc > 8U) { //pt dlc 9-15(avem maxim 8 octeti de date)
-			rx_header.dlc = 8U;
-		}
-		rx_data[rx_header.dlc] = '\0';
-		//afisam
-		printf("New Data: %s\r\n", (char *)rx_data);
+		//refacem distanta din cei 2 octeti primiti: [0] = octetul mare, [1] = octetul mic (ca la readReg16Bit)
+		uint16_t dist = ((uint16_t)rx_data[0] << 8) | ((uint16_t)rx_data[1] << 0);
+		//afisam distanta primita in mm
+		printf("Distance: %u mm\r\n", dist);
 		//dam toggle la led
 		led_toggle();
 		count++;

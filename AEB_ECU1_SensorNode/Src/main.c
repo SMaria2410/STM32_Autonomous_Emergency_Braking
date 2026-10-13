@@ -55,7 +55,7 @@ int main()
 	vl53l0x_set_timeout(500);
 	//initializam senzorul; daca vl53l0x_init returneaza false -> afisam un mesaj de eroare
 	if(vl53l0x_init() == false) {
-		printf("Eroare la initializarea senzorului!\r\n");
+		printf("Sensor initialization error!\r\n");
 	}
 	//pornim masurarea continua (cu 0 = masuratori una dupa alta, fara pauza)
 	vl53l0x_start_continuous(0);
@@ -84,8 +84,8 @@ int main()
 	printf("octetii cititi: %X %X %X\r\n", sensor_read[0], sensor_read[1], sensor_read[2]);
 */
 
-	//vrem sa transmitem 8 octeti
-	tx_header.dlc = 8;
+	//vrem sa transmitem 2 octeti
+	tx_header.dlc = 2;
 	//NU folosim extended id
 	tx_header.ext_id = 0;
 	//folosim standard id
@@ -104,7 +104,7 @@ int main()
 	tx_data[3] = 0x04;
 	tx_data[4] = 0x05;*/
 
-	uint8_t tx_msg_pack[8] = "NODE1:Hi";
+	uint8_t tx_msg_pack[8] = {0};
 
 	printf("Transmitter ready...\r\n");
 
@@ -135,8 +135,12 @@ int main()
 		}
 		//altfel afisam distanta
 		else {
-			printf("Distanta: %u mm\r\n", dist);
+			printf("Distance: %u mm\r\n", dist);
 		}
+
+		//punem distanta in mesaj: [0] = octetul mare, [1] = octetul mic (ca la writeReg16Bit)
+		tx_msg_pack[0] = (uint8_t)(dist >> 8);
+		tx_msg_pack[1] = (uint8_t)(dist >> 0);
 
 		//apelam functia de transmit
 		can_add_tx_message(&tx_header, tx_mailbox, &tx_msg_pack[0]);
