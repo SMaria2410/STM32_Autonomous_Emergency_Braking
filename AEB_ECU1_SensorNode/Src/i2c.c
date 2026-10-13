@@ -111,7 +111,7 @@ uint8_t i2c_write(uint8_t sensor_addr, uint8_t sensor_write_reg, const uint8_t *
 	if(status_flag_waiting(1U<<7) == 1) {
 		return 1;
 	}
-	I2C1->DR = (uint8_t)(sensor_write_reg << 0);
+	I2C1->DR = (uint8_t)sensor_write_reg;
 	//pt fiecare octet de date: asteptam TXE, scriem octetul in DR
 	for(int i = 0; i < n; i++) {
 		//while((I2C1->SR1 & (1U<<7)) == 0) {}
@@ -136,14 +136,14 @@ uint8_t i2c_read(uint8_t sensor_addr, uint8_t sensor_read_reg, uint8_t *data, ui
 		return 1;
 	}
 
-	//pos = 0 (pornim dintr o stare curata la orice citire)
-	I2C1->CR1 &=~ (1U<<11);
-
 	//partea 1: trimitem senzorului registrul de citire (0 = write)
 	//asteptam bus liber
 	if(free_bus_waiting() == 1) {
 		return 1;
 	}
+
+	//pos = 0 (pornim dintr o stare curata la orice citire)
+	I2C1->CR1 &=~ (1U<<11);
 	//generam start si asteptam start bit din SR1
 	I2C1->CR1 |= (1U<<8);
 	if(status_flag_waiting(1U<<0) == 1) {
@@ -210,8 +210,6 @@ uint8_t i2c_read(uint8_t sensor_addr, uint8_t sensor_read_reg, uint8_t *data, ui
 		//citim DR de doua ori (data[0], data[1])
 		data[0] = (uint8_t)I2C1->DR;
 		data[1] = (uint8_t)I2C1->DR;
-		//POS = 0 (il readucem la normal)
-		I2C1->CR1 &=~ (1U<<11);
 	}
 
 	//pt n > 2:
