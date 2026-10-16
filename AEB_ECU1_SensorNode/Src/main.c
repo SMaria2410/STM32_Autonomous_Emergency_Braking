@@ -109,10 +109,6 @@ int main()
 	printf("Transmitter ready...\r\n");
 
 	while(1) {
-		//printf("Hello from STM32\n\r");
-		//delay(1); //vrem sa dam print la mesaj in fiecare secunda
-		//pornim led ul
-		//led_on();
 		//verificam starea butonului
 		/*btn_state = get_btn_state();
 		if(btn_state == true) {

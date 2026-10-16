@@ -7,6 +7,14 @@
 #include "adc.h"
 #include "can_driver.h"
 
+//pragurile de distanta in mm
+//sub 500 mm -> atentie (WARNING)
+#define WARNING_DISTANCE_MM 500
+//sub 200 mm -> pericol (DANGER)
+#define DANGER_DISTANCE_MM 200
+//valoarea pt eroare la senzor
+#define SENSOR_ERROR_VALUE 65535
+
 //buffer in care retinem datele din receive
 uint8_t rx_data[9];
 //instanta a headerului de receive
@@ -16,14 +24,30 @@ can_rx_header_typedef rx_header;
 //contor pt debugging(cate mesaje am primit)
 uint8_t count = 0;
 
+//distanta primita ultima data (volatile pt ca o modifica intreruperea si o citeste main ul)
+volatile uint16_t last_dist;
+//momentul (get_tick) la care am primit ultimul mesaj, tot volatile -> il folosim mai tarziu la timeout
+volatile uint32_t last_msg_time;
+//flag: 1 = a venit o distanta noua pe care main ul inca nu a procesat o, tot volatile
+volatile uint8_t new_dist_flag = 0;
+
 void CAN1_RX0_IRQHandler(void) {
 	//daca avem message pending in FIFO 0
 	if((CAN1->RF0R & (0x03)) != 0) { //citim primii 2 biti din reg si verificam sa nu fie 0
 		can_get_rx_message(&rx_header, CAN_RX_FIFO0, rx_data);
-		//refacem distanta din cei 2 octeti primiti: [0] = octetul mare, [1] = octetul mic (ca la readReg16Bit)
+
+		//refacem distanta in variabila globala (in loc de variabila locala dist)
+		last_dist = ((uint16_t)rx_data[0] << 8) | ((uint16_t)rx_data[1] << 0);
+		//salvam momentul primirii cu get_tick()
+		last_msg_time = get_tick();
+		//punem flag ul pe 1
+		new_dist_flag = 1;
+
+		/*//refacem distanta din cei 2 octeti primiti: [0] = octetul mare, [1] = octetul mic (ca la readReg16Bit)
 		uint16_t dist = ((uint16_t)rx_data[0] << 8) | ((uint16_t)rx_data[1] << 0);
 		//afisam distanta primita in mm
-		printf("Distance: %u mm\r\n", dist);
+		printf("Distance: %u mm\r\n", dist);*/
+
 		//dam toggle la led
 		led_toggle();
 		count++;
@@ -46,7 +70,7 @@ int main()
 	//initializam led ul
 	led_init();
 	//initializam butonul
-	button_init();
+	//button_init();
 
 	//initializam modulul ADC
 	//pa1_adc_init();
@@ -63,6 +87,9 @@ int main()
 	    printf("PB8 e high\r\n");
 	}*/
 
+	//initializam LED urile de stare si le stingem
+	status_leds_init();
+
 	//initializam modulul can
 	can_gpio_init();
 	can_params_init(1); //setam normal mode
@@ -72,10 +99,6 @@ int main()
 	printf("Receiver ready...\n\r");
 
 	while(1) {
-		//printf("Hello from STM32\n\r");
-		//delay(1); //vrem sa dam print la mesaj in fiecare secunda
-		//pornim led ul
-		//led_on();
 		//verificam starea butonului
 		/*btn_state = get_btn_state();
 		if(btn_state == true) {
@@ -89,7 +112,42 @@ int main()
 
 		//DEBUG
 		//printf("RF0R: 0x%08lX | ESR: 0x%08lX\r\n", CAN1->RF0R, CAN1->ESR);
-		//delay(1);
-		// Verificam daca a intrat vreun mesaj in FIFO 0
+		//delay(1); //verificam daca a intrat vreun mesaj in FIFO 0
+
+		//daca flag ul e 1 (a venit o distanta noua):
+		if(new_dist_flag == 1) {
+			//punem flag ul inapoi pe 0
+			new_dist_flag = 0;
+			//facem o copie locala a distantei, ca sa nu se schimbe in timpul comparatiilor (fiind volatile)
+			uint16_t last_dist_cpy = last_dist;
+			//afisam distanta
+			printf("Distance: %u mm \r\n", last_dist_cpy);
+
+			//alegem starea in functie de distanta:
+			//buzzer: pornit pt WARNING si DANGER, oprit pt SAFE
+			system_state_t state;
+			//daca distanta e 65535 (ECU1 ne spune ca senzorul a dat timeout) -> DANGER (stare sigura)
+			if(last_dist_cpy == SENSOR_ERROR_VALUE) {
+				state = STATE_DANGER;
+				buzzer_on();
+			}
+			//altfel daca distanta < pragul de pericol -> DANGER
+			else if(last_dist_cpy < DANGER_DISTANCE_MM) {
+				state = STATE_DANGER;
+				buzzer_on();
+			}
+			//altfel daca distanta < pragul de atentie -> WARNING
+			else if(last_dist_cpy < WARNING_DISTANCE_MM) {
+				state = STATE_WARNING;
+				buzzer_on();
+			}
+			//altfel -> SAFE (inclusiv 8190 = nimic in raza)
+			else {
+				state = STATE_SAFE;
+				buzzer_off();
+			}
+			//aprindem LED ul pt starea aleasa
+			status_leds_show(state);
+		}
 	 }
 }

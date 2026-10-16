@@ -25,6 +25,27 @@ void led_toggle(void) {
 	GPIOA->ODR ^= (1U<<5);
 }
 
+/*void button_init(void) {
+	//enable clock pt PORTC
+	RCC->AHB1ENR |= (1U<<2);
+	//setam PC13 ca pin de input (bit 26 = 0; bit 27 = 0)
+	GPIOC->MODER &=~ (1U<<26);
+	GPIOC->MODER &=~ (1U<<27);
+
+}
+
+bool get_btn_state(void) {
+	//verificam daca butonul este apasat:
+	//daca e high => butonul nu e apasat => ret false
+	if(GPIOC->IDR & (1U<<13)) {
+		return false;
+	} else {
+		return true;
+	}
+	//daca e low => butonul e apasat => ret true
+}*/
+
+//pt buzzer
 void buzzer_init(void) {
 	//enable clock pt GPIOA
 	RCC->AHB1ENR |= (1U<<0);
@@ -43,23 +64,42 @@ void buzzer_off(void) {
 	GPIOA->BSRR = (1U<<6);
 }
 
-void button_init(void) {
-	//enable clock pt PORTC
-	RCC->AHB1ENR |= (1U<<2);
-	//setam PC13 ca pin de input (bit 26 = 0; bit 27 = 0)
-	GPIOC->MODER &=~ (1U<<26);
-	GPIOC->MODER &=~ (1U<<27);
-
+//pt led urile de status
+void status_leds_init(void) {
+	//enable clock access la GPIOB
+	RCC->AHB1ENR |= (1U<<1);
+	//setam PB5 (verde), PB4 (galben), PB10 (rosu) ca output
+	GPIOB->MODER &=~ (0x3U << 10); //clear
+	GPIOB->MODER &=~ (0x3U << 8);
+	GPIOB->MODER &=~ (0x3U << 20);
+	GPIOB->MODER |= (1U << 10); //set
+	GPIOB->MODER |= (1U << 8);
+	GPIOB->MODER |= (1U << 20);
+	//le stingem pe toate la inceput
+	GPIOB->BSRR = (1U << (5 + 16));
+	GPIOB->BSRR = (1U << (4 + 16));
+	GPIOB->BSRR = (1U << (10 + 16));
 }
 
-bool get_btn_state(void) {
-	//verificam daca butonul este apasat:
-	//daca e high => butonul nu e apasat => ret false
-	if(GPIOC->IDR & (1U<<13)) {
-		return false;
-	} else {
-		return true;
+
+void status_leds_show(system_state_t state) {
+	//in functie de stare:
+	//STATE_SAFE -> verde aprins, galben si rosu stinse
+	if(state == STATE_SAFE) {
+		GPIOB->BSRR = (1U << 5) | (1U << (4 + 16)) | (1U << (10 + 16));
 	}
-	//daca e low => butonul e apasat => ret true
-
+	//STATE_WARNING -> galben aprins, verde si rosu stinse
+	else if(state == STATE_WARNING) {
+		GPIOB->BSRR = (1U << 4) | (1U << (5 + 16)) | (1U << (10 + 16));
+	}
+	//STATE_DANGER -> rosu aprins, verde si galben stinse
+	else if(state == STATE_DANGER) {
+		GPIOB->BSRR = (1U << 10) | (1U << (5 + 16)) | (1U << (4 + 16));
+	}
+	//STATE_OFF -> toate stinse
+	else if(state == STATE_OFF) {
+		GPIOB->BSRR = (1U << (5 + 16)) | (1U << (4 + 16)) | (1U << (10 + 16));
+	}
 }
+
+
