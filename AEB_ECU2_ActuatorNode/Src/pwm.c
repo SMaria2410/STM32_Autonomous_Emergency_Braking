@@ -31,11 +31,11 @@ void servo_init(void) {
 }
 
 void servo_set_pulse_us(uint32_t pulse) {
-	//limitam valoarea intre 1000 si 2000 (ca sa nu fortam servo ul peste capete)
-	if(pulse < 1000) {
-		pulse = 1000;
-	} else if (pulse > 2000) {
-		pulse = 2000;
+	//limitam valoarea intre 1400 si 2400 (ca sa nu fortam servo ul peste capete)
+	if(pulse < 1400) {
+		pulse = 1400;
+	} else if (pulse > 2400) {
+		pulse = 2400;
 	}
 	//scriem valoarea in CCR1
 	TIM2->CCR1 = (pulse << 0);

@@ -6,6 +6,7 @@
 #include "bsp.h"
 #include "adc.h"
 #include "can_driver.h"
+#include "pwm.h"
 
 //pragurile de distanta in mm
 //sub 500 mm -> atentie (WARNING)
@@ -14,6 +15,10 @@
 #define DANGER_DISTANCE_MM 200
 //valoarea pt eroare la senzor
 #define SENSOR_ERROR_VALUE 65535
+
+//pozitiile servo ului(latimea pulsului in us)
+#define BRAKE_RELEASED_US 1400
+#define BRAKE_APPLIED_US 2400
 
 //buffer in care retinem datele din receive
 uint8_t rx_data[9];
@@ -90,6 +95,20 @@ int main()
 	//initializam LED urile de stare si le stingem
 	status_leds_init();
 
+	//TEST SERVO
+	servo_init();
+	/*//intr o parte
+	servo_set_pulse_us(800);
+	delay(1000);
+	//la mijloc
+	servo_set_pulse_us(1400);
+	delay(1000);
+	//in cealalta parte
+	servo_set_pulse_us(2000);
+	delay(1000);*/
+	//pornim cu frana eliberata
+	servo_set_pulse_us(BRAKE_RELEASED_US);
+
 	//initializam modulul can
 	can_gpio_init();
 	can_params_init(1); //setam normal mode
@@ -129,21 +148,25 @@ int main()
 			//daca distanta e 65535 (ECU1 ne spune ca senzorul a dat timeout) -> DANGER (stare sigura)
 			if(last_dist_cpy == SENSOR_ERROR_VALUE) {
 				state = STATE_DANGER;
+				servo_set_pulse_us(BRAKE_APPLIED_US);
 				buzzer_on();
 			}
 			//altfel daca distanta < pragul de pericol -> DANGER
 			else if(last_dist_cpy < DANGER_DISTANCE_MM) {
 				state = STATE_DANGER;
+				servo_set_pulse_us(BRAKE_APPLIED_US);
 				buzzer_on();
 			}
 			//altfel daca distanta < pragul de atentie -> WARNING
 			else if(last_dist_cpy < WARNING_DISTANCE_MM) {
 				state = STATE_WARNING;
+				servo_set_pulse_us(BRAKE_RELEASED_US);
 				buzzer_on();
 			}
 			//altfel -> SAFE (inclusiv 8190 = nimic in raza)
 			else {
 				state = STATE_SAFE;
+				servo_set_pulse_us(BRAKE_RELEASED_US);
 				buzzer_off();
 			}
 			//aprindem LED ul pt starea aleasa
