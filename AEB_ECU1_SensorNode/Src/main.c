@@ -8,6 +8,8 @@
 #include "can_driver.h"
 #include "i2c.h"
 #include "vl53l0x.h"
+#include "spi.h"
+#include "ssd1306.h"
 
 //buffer in care retinem datele pt transmit
 //uint8_t tx_data[5];
@@ -60,6 +62,24 @@ int main()
 	//pornim masurarea continua (cu 0 = masuratori una dupa alta, fara pauza)
 	vl53l0x_start_continuous(0);
 
+	spi_init();
+	ssd1306_init();
+
+	//TEST DISPLAY: chenar pe marginea ecranului
+	/*ssd1306_clear();
+	//sus si jos
+	for(int x = 0; x < 128; x++) {
+		ssd1306_set_pixel(x, 0, 1);
+		ssd1306_set_pixel(x, 63, 1);
+	}
+ 	//stanga si dreapta
+	for(int y = 0; y < 64; y++) {
+		ssd1306_set_pixel(0, y, 1);
+		ssd1306_set_pixel(127, y, 1);
+	}
+	//ssd1306_draw_string(10, 3, "test");
+	ssd1306_update();*/
+
 	/*
 	//TEST PING SENZOR(write)
 	//trimitem doar adresa senzorului + registrul 0xC0, fara date (n = 0, data = NULL)
@@ -108,6 +128,9 @@ int main()
 
 	printf("Transmitter ready...\r\n");
 
+	//un rand de ecran are 128 / 6 = 21 de caractere, + 1 pt '\0'
+	char text[22];
+
 	while(1) {
 		//verificam starea butonului
 		/*btn_state = get_btn_state();
@@ -126,13 +149,31 @@ int main()
 		//citim distanta in mm
 		uint16_t dist = vl53l0x_read_range_mm();
 		//daca a fost timeout (vl53l0x_timeout_occurred) -> afisam un mesaj de timeout
-		if(vl53l0x_timeout_occurred() == true) {
+		/*if(vl53l0x_timeout_occurred() == true) {
 			printf("Timeout!\r\n");
-		}
-		//altfel afisam distanta
+		}*/
+		/*//altfel afisam distanta
 		else {
 			printf("Distance: %u mm\r\n", dist);
+		}*/
+
+		ssd1306_clear();
+		//titlul pe pagina 0: "ECU1 - SENSOR"
+		ssd1306_draw_string_centered(0, "ECU1 - SENSOR");
+		//pe pagina 3, in functie de distanta:
+		//daca a fost timeout       -> "SENSOR TIMEOUT"
+		if(vl53l0x_timeout_occurred() == true) {
+			ssd1306_draw_string_centered(3, "SENSOR TIMEOUT");
 		}
+		//altfel daca dist >= 8190  -> "OUT OF RANGE"
+		else if(dist >= 8190) {
+			ssd1306_draw_string_centered(3, "OUT OF RANGE");
+		}
+		else {
+			snprintf(text, sizeof(text), "DIST: %u mm", dist);
+			ssd1306_draw_string_centered(3, text);
+		}
+		ssd1306_update();
 
 		//punem distanta in mesaj: [0] = octetul mare, [1] = octetul mic (ca la writeReg16Bit)
 		tx_msg_pack[0] = (uint8_t)(dist >> 8);
@@ -140,8 +181,8 @@ int main()
 
 		//apelam functia de transmit
 		can_add_tx_message(&tx_header, tx_mailbox, &tx_msg_pack[0]);
-		//vrem sa transmitem cu delay de o secunda(1000 de milisecunde)
-		delay(1000);
+		//vrem sa transmitem cu delay de 0.05 secunde (50 de milisecunde)
+		delay(50);
 
 	}
 }
