@@ -1,5 +1,7 @@
 # STM32 Autonomous Emergency Braking
 
+<img width="1600" height="1101" alt="image" src="https://github.com/user-attachments/assets/e3e766ed-456e-48a3-be51-9964f34e627d" />
+
 Bare-metal emergency braking system on two STM32F446RE Nucleo boards that communicate over CAN. All drivers are written at register level, without HAL.
 
 ## How it works
@@ -22,4 +24,4 @@ CAN, I2C, SPI, PWM, GPIO, SysTick, UART and the SSD1306 OLED display. The VL53L0
 
 ## In progress
 
-Restructuring the project into AUTOSAR-style layers.<img width="1600" height="1101" alt="image" src="https://github.com/user-attachments/assets/e3e766ed-456e-48a3-be51-9964f34e627d" />
+Restructuring the project into AUTOSAR-style layers.
