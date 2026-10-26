@@ -22,6 +22,10 @@
 #define BRAKE_RELEASED_US 1400
 #define BRAKE_APPLIED_US 2400
 
+//daca nu primim niciun mesaj de la ECU1 atatea ms -> legatura e pierduta
+//(ECU1 trimite la ~80 ms, deci 300 ms = 3-4 mesaje pierdute la rand)
+#define CAN_TIMEOUT_MS 300
+
 //buffer in care retinem datele din receive
 uint8_t rx_data[9];
 //instanta a headerului de receive
@@ -197,11 +201,27 @@ int main()
 			else if(last_dist_cpy >= 8190) {
 				ssd1306_draw_string_centered(2, "OUT OF RANGE");
 			}
-			//altfel -> snprintf "DIST: %u mm", ca la ECU1
 			else {
 				snprintf(text, sizeof(text), "DIST: %u mm", last_dist_cpy);
 				ssd1306_draw_string_centered(2, text);
 			}
+			ssd1306_update();
+		}
+		//TIMEOUT CAN (fail-safe):
+		uint32_t last_msg_time_cpy = last_msg_time;
+		uint32_t current_tick = get_tick();
+		//daca (acum - copia) > CAN_TIMEOUT_MS -> legatura cu ECU1 e pierduta
+		if((current_tick - last_msg_time_cpy) > CAN_TIMEOUT_MS) {
+			servo_set_pulse_us(BRAKE_APPLIED_US);
+			buzzer_on();
+			status_leds_show(STATE_DANGER);
+			ssd1306_clear();
+			//titlul "ECU2 - BRAKE" pe pagina 0
+			ssd1306_draw_string_centered(0, "ECU2 - BRAKE");
+			//"LINK LOST" pe pagina 2
+			ssd1306_draw_string_centered(2, "LINK LOST");
+			//"DANGER" pe pagina 5
+			ssd1306_draw_string_centered(5, "DANGER");
 			ssd1306_update();
 		}
 	 }
