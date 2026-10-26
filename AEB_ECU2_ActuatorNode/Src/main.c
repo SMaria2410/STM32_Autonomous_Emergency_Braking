@@ -7,6 +7,8 @@
 #include "adc.h"
 #include "can_driver.h"
 #include "pwm.h"
+#include "spi.h"
+#include "ssd1306.h"
 
 //pragurile de distanta in mm
 //sub 500 mm -> atentie (WARNING)
@@ -95,6 +97,9 @@ int main()
 	//initializam LED urile de stare si le stingem
 	status_leds_init();
 
+	spi_init();
+	ssd1306_init();
+
 	//TEST SERVO
 	servo_init();
 	/*//intr o parte
@@ -116,6 +121,8 @@ int main()
 	can_start();
 
 	printf("Receiver ready...\n\r");
+
+	char text[22];
 
 	while(1) {
 		//verificam starea butonului
@@ -142,6 +149,10 @@ int main()
 			//afisam distanta
 			printf("Distance: %u mm \r\n", last_dist_cpy);
 
+			ssd1306_clear();
+			//pagina 0: "ECU2 - BRAKE" (centrat)
+			ssd1306_draw_string_centered(0, "ECU2 - BRAKE");
+
 			//alegem starea in functie de distanta:
 			//buzzer: pornit pt WARNING si DANGER, oprit pt SAFE
 			system_state_t state;
@@ -150,27 +161,48 @@ int main()
 				state = STATE_DANGER;
 				servo_set_pulse_us(BRAKE_APPLIED_US);
 				buzzer_on();
+				ssd1306_draw_string_centered(5, "DANGER");
+
 			}
 			//altfel daca distanta < pragul de pericol -> DANGER
 			else if(last_dist_cpy < DANGER_DISTANCE_MM) {
 				state = STATE_DANGER;
 				servo_set_pulse_us(BRAKE_APPLIED_US);
 				buzzer_on();
+				ssd1306_draw_string_centered(5, "DANGER");
 			}
 			//altfel daca distanta < pragul de atentie -> WARNING
 			else if(last_dist_cpy < WARNING_DISTANCE_MM) {
 				state = STATE_WARNING;
 				servo_set_pulse_us(BRAKE_RELEASED_US);
 				buzzer_on();
+				ssd1306_draw_string_centered(5, "WARNING");
 			}
 			//altfel -> SAFE (inclusiv 8190 = nimic in raza)
 			else {
 				state = STATE_SAFE;
 				servo_set_pulse_us(BRAKE_RELEASED_US);
 				buzzer_off();
+				ssd1306_draw_string_centered(5, "SAFE");
 			}
 			//aprindem LED ul pt starea aleasa
 			status_leds_show(state);
+
+			//pagina 2: distanta:
+			//daca e SENSOR_ERROR_VALUE -> "SENSOR ERROR"
+			if(last_dist_cpy == SENSOR_ERROR_VALUE) {
+				ssd1306_draw_string_centered(2, "SENSOR ERROR");
+			}
+			//altfel daca >= 8190 -> "OUT OF RANGE"
+			else if(last_dist_cpy >= 8190) {
+				ssd1306_draw_string_centered(2, "OUT OF RANGE");
+			}
+			//altfel -> snprintf "DIST: %u mm", ca la ECU1
+			else {
+				snprintf(text, sizeof(text), "DIST: %u mm", last_dist_cpy);
+				ssd1306_draw_string_centered(2, text);
+			}
+			ssd1306_update();
 		}
 	 }
 }
